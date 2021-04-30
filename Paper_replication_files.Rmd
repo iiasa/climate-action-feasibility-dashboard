@@ -1,0 +1,59 @@
+---
+  title: "Replication file for the paper: A multidimensional feasibility evaluation of low-carbon scenarios"
+output:
+  html_document: default
+always_allow_html: true
+---
+  
+  ```{r setup, include=FALSE}
+#knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(global.par = TRUE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+
+```{r packages, include=FALSE, MESSAGE=FALSE}
+pkgs<-c("vroom", "tidyverse", "plotly", "RColorBrewer", "viridis", "hrbrthemes", "here", "ggridges", "ggsci", "ggrepel", "stringr", "cowplot", "ggfan", "scales", "skimr", "jtools", "arsenal", "corrplot", "countrycode", "ggpmisc")
+#install.packages(pkgs) -> please uncomment it if you don't have the required packages installed
+
+load<-lapply(pkgs, library, character.only=TRUE)
+```
+
+```{r functions, include=FALSE, MESSAGE=FALSE}
+
+geom_mean<-function(x){exp(mean(log(x)))}
+
+```
+
+```{r data_input, include=FALSE, MESSAGE=FALSE}
+
+#Data from the 1.5C scenario explorer
+world<-vroom(here("input", "full.csv"))
+meta<-vroom(here("input", "meta.csv"))
+marker_set<-vroom(here("input", "marker.csv"))
+meta_policy<-vroom(here("input", "meta_policy_1.csv"))
+baselines<-vroom(here("input", "baselines.csv"))
+
+#assuptions about thresholds
+
+thresholds<-vroom(here("input", "thresholds1.csv"))
+
+
+#Regional conversions for R5 for the empirical data that is used
+region_con<-vroom(here("input", "region_conversion.csv"))
+
+#Data on coal from Global Monitor
+
+coal_50_all<-vroom(here("input", "coal_50_all.csv"))
+
+#Data from Adrijevic et al.(2019, 2020) and the Wittgenstein Center
+
+governance_proj<-vroom(here("input", "governance.csv"))
+gov_eff<-vroom(here("input", "gov_eff_projections.csv"))
+GII<-vroom(here("input", "GII.csv"))
+EPI<-vroom(here("input", "EPI.csv"))
+gov_his<-vroom(here("input", "gov_historical.csv"))
+age<-vroom(here("input", "age1.csv"))
+education<-vroom(here("input", "education1.csv"))
+fertility<-vroom(here("input", "fertility1.csv"))
+```
+
