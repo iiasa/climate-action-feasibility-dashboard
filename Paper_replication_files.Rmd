@@ -26,41 +26,8 @@ load<-lapply(pkgs, library, character.only=TRUE)
 ```
 
 
-
-```{r data_input, include=FALSE, MESSAGE=FALSE}
-
-#Data from the 1.5C scenario explorer
-meta<-vroom(here("input", "meta.csv"))
-marker_set<-vroom(here("input", "marker.csv"))
-meta_policy<-vroom(here("input", "meta_policy.csv"))
-baselines<-vroom(here("input", "baselines.csv"))
-
-#assumptions about thresholds
-
-thresholds<-vroom(here("input", "thresholds.csv"))
-
-
-#Regional conversions for R5 for the empirical data that is used
-region_con<-vroom(here("input", "region_conversion.csv"))
-
-#Data on coal from Global Monitor: https://globalenergymonitor.org/projects/global-coal-plant-tracker/ 
-
-coal_50_all<-vroom(here("input", "coal_50_all.csv"))
-
-#Data from Adrijevic et al.(2019, 2020) and the Wittgenstein Center
-
-governance_proj<-vroom(here("input", "governance.csv"))
-gov_eff<-vroom(here("input", "gov_eff_projections.csv"))
-GII<-vroom(here("input", "GII.csv"))
-EPI<-vroom(here("input", "EPI.csv"))
-gov_his<-vroom(here("input", "gov_historical.csv"))
-age<-vroom(here("input", "age.csv"))
-education<-vroom(here("input", "education.csv"))
-fertility<-vroom(here("input", "fertility.csv"))
-```
-
-```{python}
-#You can import the 1.5C dataset either by using a python package pyam (and the link through reticulate) or by loading it file (Release 2.0) from the scenario explorer and saving it in the input folder 
+```{python pyam_world_data}
+#You can import the 1.5C dataset either by using a python package pyam (and the link through reticulate) or by loading it (Release 2.0) from the scenario explorer and saving it in the input folder 
 
 import pyam
 
@@ -129,10 +96,386 @@ df.to_csv('input/full.csv')
 
 ```
 
-```{r}
-full<-as_tibble(py$df)
+```{python pyam_region_data}
+#You can import the 1.5C dataset either by using a python package pyam (and the link through reticulate) or by loading an .csv file (Release 2.0) from the scenario explorer and saving it in the input folder 
+
+import pyam
+
+df2 =pyam.read_iiasa(
+    'IXSE_SR15',
+    model='*',
+    variable=[
+  "Emissions|CO2",
+  "GDP|PPP",
+  "Population"]
+)
+
+df2.to_csv('input/region.csv')
+```
+
+
+```{r data_input, include=FALSE, MESSAGE=FALSE}
+#Data from the 1.5C scenario explorer
+
+world<-vroom(here("input", "full.csv"))
+region<-vroom(here("input", "region.csv"))
+meta<-vroom(here("input", "meta.csv"))
+marker_set<-vroom(here("input", "marker.csv"))
+meta_policy<-vroom(here("input", "meta_policy.csv"))
+baselines<-vroom(here("input", "baselines.csv"))
+
+#assumptions about thresholds
+
+thresholds<-vroom(here("input", "thresholds.csv"))
+
+
+#Regional conversions for R5 for the empirical data that is used
+region_con<-vroom(here("input", "region_conversion.csv"))
+
+#Data on coal from Global Monitor: https://globalenergymonitor.org/projects/global-coal-plant-tracker/ 
+
+coal_50_all<-vroom(here("input", "coal_50_all.csv"))
+
+#Data from Adrijevic et al.(2019, 2020) and the Wittgenstein Center
+
+governance_proj<-vroom(here("input", "governance.csv"))
+gov_eff<-vroom(here("input", "gov_eff_projections.csv"))
+GII<-vroom(here("input", "GII.csv"))
+EPI<-vroom(here("input", "EPI.csv"))
+gov_his<-vroom(here("input", "gov_historical.csv"))
+age<-vroom(here("input", "age.csv"))
+education<-vroom(here("input", "education.csv"))
+fertility<-vroom(here("input", "fertility.csv"))
+```
+
+
+
+
+```{r data_preparation, include=FALSE, MESSAGE=FALSE}
+
+#here we prepare some transformations for the generation of the indicators
+
+
+#We look only at data per decade
+years<-c("2010", "2020", "2030", "2040", "2050", "2060", "2070", "2080", "2090", "2100")
+
+
+#Different climate categories
+below_1.5<-c("1.5C high overshoot", "1.5C low overshoot", "Below 1.5C")
+below_2<-c("Higher 2C", "Lower 2C")
+
+
+#prepare thresholds
+
+thresholds<-thresholds %>%
+            pivot_wider(names_from = variable, values_from = threshold)
+
+world_indicators<- world %>%
+                   select(-c(Unit, Meta)) %>%
+                   filter(Region=="World"&Model!="Reference") %>%
+                   mutate(Variable=str_replace_all(Variable,"[|/ ]", "_")) %>%
+                   mutate(Variable=str_to_lower(Variable, locale = "en")) %>%
+                   pivot_longer(-c(Model,Scenario, Region, Variable), names_to = "Year", values_to = "Value" ) %>% 
+                   pivot_wider(id_cols=c(Model, Scenario, Region, Year), names_from = Variable, values_from = Value)%>% 
+                   unite("Scenario_ID", Model:Scenario, remove = FALSE) %>%
+                   filter(Year %in% years) %>%
+                   mutate(Year=as.numeric(Year))
+
+#merge with baselines
+world_indicators<-left_join(world_indicators, baselines, by=c("Model", "Scenario"))
+                  
+indicators_no_baselines<-world_indicators %>%
+                         filter(type=="mitigation")
+
+#prepare meta
+meta<-meta %>%
+      select(model, scenario, category, marker) %>%
+      rename(Model=model, Scenario=scenario)
+
+indicators_no_baselines<-left_join(indicators_no_baselines, meta, by=c("Scenario", "Model"))
+
+
+
+indicators_no_baselines<-indicators_no_baselines %>%
+                         mutate(SSP_family=ifelse(grepl('SSP1', Scenario_ID), 1,
+                                           ifelse(grepl('SSP2', Scenario_ID), 2,                                                                                       ifelse(grepl('SSP3', Scenario_ID), 3,
+                                           ifelse(grepl('SSP4', Scenario_ID), 4,                                                                                       ifelse(grepl('SSP5', Scenario_ID), 5, 2                                                                        )))))) %>%
+                        mutate(SSP_family=as.factor(SSP_family))
 
 ```
+
+
+```{r indicators_economic, include=FALSE, MESSAGE=FALSE}
+
+#Carbon Price
+indicators_calculated<-indicators_no_baselines %>%
+                       group_by(Scenario_ID) %>%
+                       #we add 1 in case carbon price is zero
+                       mutate(carbon_ratio=price_carbon/lag(price_carbon+1)) %>%
+                       #carbon price net present value assuming 5 % discount rate
+                       mutate(carbon_price_npv = price_carbon/(1.05^(Year-2020)))
+
+#Checking for quantiles for the visualizations
+carbon_95<-quantile(indicators_calculated$carbon_price_npv, c(.95), na.rm = T) 
+carbon_ratio_95<-quantile(indicators_calculated$carbon_ratio, c(.95), na.rm = T) 
+
+
+#GDP loss and investments
+gdp_investment_baselines<-world_indicators %>%
+                          select(Model, Scenario, economic_baseline, gdp_ppp, investment_energy_supply, Year)%>%
+                          filter(Scenario==economic_baseline) %>%
+                          rename(gdp_ppp_b=gdp_ppp) %>%
+                          rename(investment_energy_supply_b=investment_energy_supply) %>%
+                          select(-Scenario)
+
+indicators_calculated<-left_join(indicators_calculated,gdp_investment_baselines, by=c("Model", "economic_baseline", "Year"))
+
+indicators_calculated<-indicators_calculated %>%
+                       mutate(gdp_loss = (1-gdp_ppp/gdp_ppp_b)*100) %>%
+                       #some models report GDP as zero when in fact it should be reported as missing 
+                       mutate(gdp_loss=ifelse(gdp_loss==0, NA, gdp_loss)) %>%
+                       mutate(invest_ratio = investment_energy_supply/investment_energy_supply_b)
+
+
+#Stranded coal###
+coal<-coal_50_all %>%
+      filter(Region=="World") %>%
+      select(-Region) %>%
+      mutate(coal_electricity_50=coal_capacity_50*365*24*0.60*0.0000036)
+
+
+indicators_calculated<-left_join(indicators_calculated, coal, by="Year")
+
+indicators_calculated<-indicators_calculated %>%
+                       mutate(coal_stranded1=(coal_electricity_50-secondary_energy_electricity_coal)/coal_electricity_50*100) %>%
+                       group_by(Scenario_ID) %>%
+                       mutate(coal_stranded2=coal_stranded1-lag(coal_stranded1)) %>%
+                       mutate(coal_stranded2=ifelse(Year>=2070|coal_stranded2<0, 0, coal_stranded2)) %>%
+                       mutate(coal_stranded2=ifelse(coal_stranded2>100, 100, coal_stranded2))
+```
+
+
+```{r indicators_technology, include=FALSE, MESSAGE=FALSE}
+#Technological indicators###
+
+indicators_calculated<-indicators_calculated %>%
+                       ungroup() %>%
+                       group_by(Scenario_ID) %>%
+#electricity
+mutate(coal_share=secondary_energy_electricity_coal/secondary_energy_electricity*100) %>%
+mutate(coal_drop=lag(coal_share)-coal_share)%>%
+mutate(wind_share=secondary_energy_electricity_wind/secondary_energy_electricity*100) %>%
+mutate(wind_scale=(wind_share-lag(wind_share))) %>%
+mutate(solar_share=secondary_energy_electricity_solar/secondary_energy_electricity*100) %>%
+mutate(solar_scale=(solar_share-lag(solar_share))) %>%
+mutate(nuclear_share=secondary_energy_electricity_nuclear/secondary_energy_electricity*100) %>%
+mutate(nuclear_scale=(nuclear_share-lag(nuclear_share))) %>%
+mutate(biomass_share=secondary_energy_electricity_biomass/secondary_energy_electricity*100) %>%
+mutate(biomass_scale=(biomass_share-lag(biomass_share))) %>%
+mutate(biomass_ccs=secondary_energy_electricity_biomass_w__ccs/secondary_energy_electricity*100) %>%
+mutate(biomass_ccs_scale=(biomass_ccs-lag(biomass_ccs))) %>%
+mutate(coal_ccs=secondary_energy_electricity_coal_w__ccs/secondary_energy_electricity*100) %>%
+mutate(coal_ccs_scale=(coal_ccs-lag(coal_ccs))) %>%  
+#transport
+mutate(share_electricity_transport=final_energy_transportation_electricity/final_energy_transportation*100) %>%
+mutate(transport_e_increase=share_electricity_transport-lag(share_electricity_transport)) %>%
+mutate(share_biofuels=final_energy_transportation_liquids_biomass/final_energy_transportation*100) %>%
+mutate(transport_bio_increase=share_biofuels-lag(share_biofuels)) %>%
+#demand    
+mutate(forest_increase=(land_cover_forest/lag(land_cover_forest)-1)*100) %>%
+mutate(pasture_drop=(1-land_cover_pasture/lag(land_cover_pasture))*100) %>%
+mutate(demand_drop=(1-final_energy/lag(final_energy))*100) %>%
+mutate(demand_re_drop=(1-final_energy_residential_and_commercial/lag(final_energy_residential_and_commercial))*100) %>%
+mutate(demand_transport_drop=(1-final_energy_transportation/lag(final_energy_transportation))*100) %>%
+mutate(demand_industry_drop=(1-final_energy_industry_electricity/lag(final_energy_industry_electricity))*100) %>%
+mutate(livestock_share=food_demand_livestock/food_demand*100) %>%
+mutate(livestock_drop=lag(livestock_share)-livestock_share) %>%
+mutate(neg_emissions_check = ifelse(emissions_co2<0,1,0))%>%
+mutate(neg_emissions=emissions_co2*neg_emissions_check*(-1))%>%
+mutate(neg_emissions_cum=cumsum(neg_emissions))
+
+```
+
+```{r indicators_governance, include=FALSE, MESSAGE=FALSE}
+
+#merge governance data with regions
+region_con<-region_con %>%
+            rename(countrycode = iso)
+
+governance_proj<-left_join(governance_proj, region_con, by="countrycode")
+
+#aggregate governance levels by median
+governance_proj_reg <- governance_proj %>%
+                   group_by(scenario, regions, year) %>%
+                   summarise_at(vars(gov), median) %>%
+                   mutate(year=ifelse(year==2099,2100,year)) %>%
+                   rename(Region=regions) %>%
+                   rename(Year=year) %>%
+                   rename(SSP_pred=scenario) %>%
+                   ungroup()%>%
+                   mutate(SSP_pred=as.numeric(str_replace_all(SSP_pred,"SSP", ""))) %>%
+                   mutate(
+                   Region = case_when(
+                                    Region=="ASIA" ~ "R5ASIA", 
+                                    Region=="LAM" ~ "R5LAM",
+                                    Region=="OECD" ~ "R5OECD90+EU",
+                                    Region=="REF" ~ "R5REF",
+                                    Region=="MAF" ~ "R5MAF"
+                                     ))
+
+#Regional indicators for population and CO2 emissions
+region_indicators<-region %>%
+                   select(-c(Unit, Meta)) %>%
+                   filter(Region!="World"&Region!="R5ROWO"&Model!="Reference") %>%
+                   mutate(Variable=str_replace_all(Variable,"[|/ ]", "_")) %>%
+                   mutate(Variable=str_to_lower(Variable, locale = "en")) %>%
+                   pivot_longer(-c(Model,Scenario, Region, Variable), names_to = "Year", values_to = "Value" ) %>% 
+                   pivot_wider(id_cols=c(Model, Scenario, Region, Year), names_from = Variable, values_from = Value)%>% 
+                   unite("Scenario_ID", Model:Scenario, remove = FALSE) %>%
+                   filter(Year %in% years) %>%
+                   mutate(Year=as.numeric(Year)) %>%
+                   mutate(SSP_pred=ifelse(grepl('SSP1', Scenario_ID), 1,
+                                           ifelse(grepl('SSP2', Scenario_ID), 2,                                               ifelse(grepl('SSP3', Scenario_ID), 3,
+                                           ifelse(grepl('SSP4', Scenario_ID), 4,                                               ifelse(grepl('SSP5', Scenario_ID), 5, 2                                                                        )))))) 
+
+region_indicators<-left_join(region_indicators, governance_proj_reg, by=c("Year", "Region", "SSP_pred"))
+
+
+#generating key indicators
+
+region_indicators<-region_indicators %>%
+                   group_by(Scenario_ID, Region) %>%
+                   mutate(neg_emissions_check = ifelse(emissions_co2<0,1,0)) %>%
+                   mutate(neg_emissions_abs=emissions_co2*neg_emissions_check*(-1)) %>% 
+                   mutate(emissions_drop=abs((1-(abs(emissions_co2)/population)/lag(abs(emissions_co2)/population))*100)) %>%
+           mutate(emissions_drop=ifelse(emissions_drop>100,100,emissions_drop))
+  
+neg_emissions_temp<-region_indicators %>% 
+                    mutate(neg_emissions_year=ifelse(c(0,diff(sign(emissions_co2)))<0, 1,0)) %>%
+                    filter(neg_emissions_year==1) %>%
+                    select(-neg_emissions_year) %>%
+                    rename(neg_emissions_year=Year) %>%
+                    select(Scenario_ID, Region, neg_emissions_year)
+  
+region_indicators<-left_join(region_indicators, neg_emissions_temp, by=c("Scenario_ID", "Region"))
+
+region_indicators<-left_join(region_indicators, meta, by=c("Model", "Scenario"))
+
+region_indicators<- region_indicators %>% 
+                    mutate(concern_governance=ifelse(gov<=0.6&emissions_drop>20, 3,
+                    ifelse(gov>0.6&emissions_drop>20, 2,1)))
+
+
+#governance world level
+
+gov_world<-region_indicators %>%
+  distinct(Scenario_ID, Year, .keep_all = TRUE) %>%
+  group_by(Scenario_ID, Year) %>%
+  summarise_at(vars(concern_governance), prod) %>%
+  mutate(concern_governance=concern_governance^(1/5)) %>%
+  mutate(Region="World") %>%
+  select(-Region)
+
+indicators_calculated<-left_join(indicators_calculated, gov_world, by=c("Year", "Scenario_ID"))
+```
+
+```{r indicators_thresholds, include=FALSE, MESSAGE=FALSE}
+
+#first focus on economic concerns
+
+e<-c("concern_gdp", "concern_carbon", "concern_investment", "concern_coal")
+
+
+indicators_concerns<-indicators_calculated %>%
+                     group_by(Scenario_ID, Year) %>%
+                     mutate(concern_gdp=ifelse(gdp_loss>=thresholds$gdp_high,3, ifelse(gdp_loss<thresholds$gdp_low,1,2))) %>%
+                     mutate(concern_carbon=ifelse(carbon_price_npv>=thresholds$carbon_high&carbon_ratio>=thresholds$carbon_ratio_high,3, 
+                     ifelse(carbon_ratio<thresholds$carbon_ratio_high&carbon_price_npv<=thresholds$carbon_low,1,2))) %>%
+                     mutate(concern_investment=ifelse(invest_ratio>=thresholds$invest_high,3,
+                                               ifelse(invest_ratio<thresholds$invest_low,1,2))) %>%
+                     mutate(concern_coal=ifelse(coal_stranded2>=thresholds$coal_high,3,
+                                         ifelse(coal_stranded2<thresholds$coal_low,1,2))) %>%
+                     mutate(product_economic=prod(c(concern_gdp,concern_carbon,concern_investment,concern_coal), na.rm=TRUE))%>%
+                     mutate(confidence_e=length(e)-sum(is.na(c(concern_gdp,concern_carbon,concern_investment,concern_coal))))%>%
+                     mutate(confidence_econ=ifelse(confidence_e==0,1, ifelse(confidence_e>2,3,2)))%>%
+                     mutate(concern_economic=product_economic^(1/confidence_e)) %>%
+                     mutate(concern_economic=ifelse(confidence_e==0, NA, concern_economic))
+
+#technology concerns
+
+t<-c("concern_wind","concern_solar","concern_nuclear","concern_biomass","concern_biomass_ccs","concern_coal_ccs","concern_transport_e","concern_transport_bio")
+  
+indicators_concerns <-  indicators_concerns %>%
+                        group_by(Scenario_ID, Year) %>%
+                        #mutate(concern_neg_emissions=ifelse(neg_emissions>=thresholds$neg_high,3,
+                        #ifelse(neg_emissions<thresholds$neg_high&neg_emissions>=thresholds$neg_low,2,1))) %>%
+                        mutate(concern_wind=ifelse(wind_scale>=thresholds$wind_high, 3,
+                            ifelse(wind_scale<thresholds$wind_low,1,2))) %>%
+                        mutate(concern_solar=ifelse(solar_scale>=thresholds$solar_high,3,
+                             ifelse(solar_scale<thresholds$solar_low,1,2))) %>%
+                        mutate(concern_nuclear=ifelse(nuclear_scale>=thresholds$nuclear_high,3,
+                               ifelse(nuclear_scale<thresholds$nuclear_low,1,2))) %>%
+                        mutate(concern_biomass=ifelse(biomass_scale>=thresholds$biomass_high,3,
+                               ifelse(biomass_scale<thresholds$biomass_low,1,2))) %>%
+                        mutate(concern_biomass_ccs=ifelse(biomass_ccs_scale>=thresholds$biomass_css_high,3,
+                                   ifelse(biomass_ccs_scale<thresholds$biomass_css_low,1,2))) %>%
+                        mutate(concern_coal_ccs=ifelse(coal_ccs_scale>=thresholds$coal_css_high,3,
+                                ifelse(coal_ccs_scale<thresholds$coal_css_low,1,2))) %>%
+                        mutate(concern_transport_e=ifelse(transport_e_increase>=thresholds$tran_elec_high,3,
+                                   ifelse(transport_e_increase<thresholds$tran_elec_low,1,2))) %>%
+                        mutate(concern_transport_bio=ifelse(transport_bio_increase>=thresholds$tran_bio_high,3,
+                                     ifelse(transport_bio_increase<thresholds$tran_bio_low,1,2))) %>% 
+                        mutate(product_technological=prod(c(concern_wind,concern_solar,concern_nuclear,concern_biomass, 
+                                     concern_biomass_ccs, concern_coal_ccs,concern_transport_e,concern_transport_bio),na.rm=TRUE)) %>%
+                        mutate(confidence_t=length(t)-sum(is.na(c(concern_wind,concern_solar,concern_nuclear,concern_biomass, 
+                                      concern_biomass_ccs, concern_coal_ccs,concern_transport_e,concern_transport_bio)))) %>%
+                        mutate(concern_tech=product_technological^(1/confidence_t))%>%
+                        mutate(confidence_tech=ifelse(confidence_t==0,1, ifelse(confidence_t>7,3,2))) %>%
+                        mutate(concern_tech=ifelse(confidence_t==0, NA, concern_tech))
+
+
+
+#socio-technical concerns
+s<-c("concern_livestock","concern_demand","concern_transport","concern_demand_re",
+       "concern_demand_industry","concern_forest","concern_pasture")
+  
+indicators_concerns<-indicators_concerns %>%
+    group_by(Scenario_ID, Year) %>%
+    mutate(concern_livestock=ifelse(livestock_drop>=thresholds$livestock_high,3,
+                                 ifelse(livestock_drop<thresholds$livestock_low,1,2))) %>%
+    mutate(concern_demand=ifelse(demand_drop>=thresholds$fe_demand_high,3,
+                              ifelse(demand_drop<thresholds$fe_demand_low,1,2))) %>%
+    mutate(concern_transport=ifelse(demand_transport_drop>=thresholds$tran_demand_high,3,
+                                 ifelse(demand_transport_drop<thresholds$tran_demand_low,1,2))) %>%
+    mutate(concern_demand_re=ifelse(demand_re_drop>=thresholds$res_demand_high,3,
+                                 ifelse(demand_re_drop<thresholds$res_demand_low,1,2))) %>%
+    mutate(concern_demand_industry=ifelse(demand_industry_drop>=thresholds$ind_demand_high,3,
+                                       ifelse(demand_industry_drop<thresholds$ind_demand_low,1,2))) %>%
+    mutate(concern_forest=ifelse(forest_increase>=thresholds$forest_high,3,
+                              ifelse(forest_increase<thresholds$forest_low,1,2))) %>%
+    mutate(concern_pasture=ifelse(pasture_drop>=thresholds$pasture_high,3,
+                               ifelse(pasture_drop<thresholds$pasture_low,1,2))) %>%
+    mutate(product_social=prod(c(concern_livestock,concern_demand,concern_transport,concern_demand_re,
+                              concern_demand_industry,concern_forest,concern_pasture),na.rm=TRUE)) %>%
+    mutate(confidence_s=length(s)-sum(is.na(c(concern_livestock,concern_demand,concern_transport,concern_demand_re,
+                                      concern_demand_industry,concern_forest,concern_pasture)))) %>%
+    mutate(concern_social=product_social^(1/confidence_s))%>%
+    mutate(confidence_soc=ifelse(confidence_s==0,1, ifelse(confidence_s>5,3,2))) %>%
+    mutate(concern_social=ifelse(confidence_s==0, NA, concern_social))
+
+#overall feasibility concerns
+indicators_concerns<-indicators_concerns %>%
+                     group_by(Scenario_ID, Year) %>%
+                     mutate(concern_overall=prod(c(concern_governance,concern_economic,concern_tech, concern_social)^(1/4), na.rm = T)) %>%
+                     mutate(concern_overall=ifelse(confidence_t==0&confidence_s==0&confidence_e==0, NA, concern_overall)) %>%
+                     mutate(confidence_o=confidence_e+confidence_t+confidence_s) %>%
+                     mutate(confidence_overall=ifelse(confidence_o>14,3,
+                                               ifelse(confidence_o<5,1,2)))
+
+```
+
+
+
 
 
 
