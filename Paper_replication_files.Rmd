@@ -19,11 +19,13 @@ geom_mean<-function(x){exp(mean(log(x)))}
 
 
 ```{r packages, include=FALSE, MESSAGE=FALSE}
-pkgs<-c("vroom", "tidyverse", "plotly", "RColorBrewer", "viridis", "hrbrthemes", "here", "ggridges", "ggsci", "stringr", "cowplot","scales", "skimr", "jtools", "countrycode", "ggpmisc", "reticulate")
+pkgs<-c("vroom", "tidyverse", "plotly", "RColorBrewer", "viridis", "hrbrthemes", "here", "ggridges", "ggsci", "stringr", "cowplot","scales", "skimr", "jtools", "countrycode", "ggpmisc", "reticulate", "ggrepel")
 #install.packages(pkgs) -> please uncomment it if you don't have the required packages installed
 
 load<-lapply(pkgs, library, character.only=TRUE)
 ```
+
+## Data preparation
 
 
 ```{python pyam_world_data}
@@ -215,11 +217,6 @@ indicators_calculated<-indicators_no_baselines %>%
                        #carbon price net present value assuming 5 % discount rate
                        mutate(carbon_price_npv = price_carbon/(1.05^(Year-2020)))
 
-#Checking for quantiles for the visualizations
-carbon_95<-quantile(indicators_calculated$carbon_price_npv, c(.95), na.rm = T) 
-carbon_ratio_95<-quantile(indicators_calculated$carbon_ratio, c(.95), na.rm = T) 
-
-
 #GDP loss and investments
 gdp_investment_baselines<-world_indicators %>%
                           select(Model, Scenario, economic_baseline, gdp_ppp, investment_energy_supply, Year)%>%
@@ -377,6 +374,9 @@ gov_world<-region_indicators %>%
   select(-Region)
 
 indicators_calculated<-left_join(indicators_calculated, gov_world, by=c("Year", "Scenario_ID"))
+
+#write.csv(indicators_calculated,here("input", "indicators_calculated.csv"), row.names = F)
+
 ```
 
 ```{r indicators_thresholds, include=FALSE, MESSAGE=FALSE}
@@ -392,9 +392,9 @@ indicators_concerns<-indicators_calculated %>%
                      mutate(concern_carbon=ifelse(carbon_price_npv>=thresholds$carbon_high&carbon_ratio>=thresholds$carbon_ratio_high,3, 
                      ifelse(carbon_ratio<thresholds$carbon_ratio_high&carbon_price_npv<=thresholds$carbon_low,1,2))) %>%
                      mutate(concern_investment=ifelse(invest_ratio>=thresholds$invest_high,3,
-                                               ifelse(invest_ratio<thresholds$invest_low,1,2))) %>%
+                                ifelse(invest_ratio<thresholds$invest_high&invest_ratio>=thresholds$invest_low,2,1))) %>%
                      mutate(concern_coal=ifelse(coal_stranded2>=thresholds$coal_high,3,
-                                         ifelse(coal_stranded2<thresholds$coal_low,1,2))) %>%
+                          ifelse(coal_stranded2<thresholds$coal_high&coal_stranded2>=thresholds$coal_low,2,1))) %>%
                      mutate(product_economic=prod(c(concern_gdp,concern_carbon,concern_investment,concern_coal), na.rm=TRUE))%>%
                      mutate(confidence_e=length(e)-sum(is.na(c(concern_gdp,concern_carbon,concern_investment,concern_coal))))%>%
                      mutate(confidence_econ=ifelse(confidence_e==0,1, ifelse(confidence_e>2,3,2)))%>%
@@ -403,28 +403,27 @@ indicators_concerns<-indicators_calculated %>%
 
 #technology concerns
 
-t<-c("concern_wind","concern_solar","concern_nuclear","concern_biomass","concern_biomass_ccs","concern_coal_ccs","concern_transport_e","concern_transport_bio")
-  
+
 indicators_concerns <-  indicators_concerns %>%
                         group_by(Scenario_ID, Year) %>%
                         #mutate(concern_neg_emissions=ifelse(neg_emissions>=thresholds$neg_high,3,
                         #ifelse(neg_emissions<thresholds$neg_high&neg_emissions>=thresholds$neg_low,2,1))) %>%
                         mutate(concern_wind=ifelse(wind_scale>=thresholds$wind_high, 3,
-                            ifelse(wind_scale<thresholds$wind_low,1,2))) %>%
+                            ifelse(wind_scale<thresholds$wind_high&wind_scale>=thresholds$wind_low,2,1))) %>%
                         mutate(concern_solar=ifelse(solar_scale>=thresholds$solar_high,3,
-                             ifelse(solar_scale<thresholds$solar_low,1,2))) %>%
+                             ifelse(solar_scale<thresholds$solar_high&solar_scale>=thresholds$solar_low,2,1))) %>%
                         mutate(concern_nuclear=ifelse(nuclear_scale>=thresholds$nuclear_high,3,
-                               ifelse(nuclear_scale<thresholds$nuclear_low,1,2))) %>%
+                               ifelse(nuclear_scale<thresholds$nuclear_high&nuclear_scale>=thresholds$nuclear_low,2,1))) %>%
                         mutate(concern_biomass=ifelse(biomass_scale>=thresholds$biomass_high,3,
-                               ifelse(biomass_scale<thresholds$biomass_low,1,2))) %>%
+                               ifelse(biomass_scale<thresholds$biomass_high&biomass_scale>=thresholds$biomass_low,2,1))) %>%
                         mutate(concern_biomass_ccs=ifelse(biomass_ccs_scale>=thresholds$biomass_css_high,3,
-                                   ifelse(biomass_ccs_scale<thresholds$biomass_css_low,1,2))) %>%
+                                   ifelse(biomass_ccs_scale<thresholds$biomass_css_high&biomass_ccs_scale>=thresholds$biomass_css_low,2,1))) %>%
                         mutate(concern_coal_ccs=ifelse(coal_ccs_scale>=thresholds$coal_css_high,3,
-                                ifelse(coal_ccs_scale<thresholds$coal_css_low,1,2))) %>%
+                                ifelse(coal_ccs_scale<thresholds$coal_css_high&coal_ccs_scale>=thresholds$coal_css_low,2,1))) %>%
                         mutate(concern_transport_e=ifelse(transport_e_increase>=thresholds$tran_elec_high,3,
-                                   ifelse(transport_e_increase<thresholds$tran_elec_low,1,2))) %>%
+                                   ifelse(transport_e_increase<thresholds$tran_elec_high&transport_e_increase>=thresholds$tran_elec_low,2,1))) %>%
                         mutate(concern_transport_bio=ifelse(transport_bio_increase>=thresholds$tran_bio_high,3,
-                                     ifelse(transport_bio_increase<thresholds$tran_bio_low,1,2))) %>% 
+                                     ifelse(transport_bio_increase<thresholds$tran_bio_high&transport_bio_increase>=thresholds$tran_bio_low,2,1))) %>% 
                         mutate(product_technological=prod(c(concern_wind,concern_solar,concern_nuclear,concern_biomass, 
                                      concern_biomass_ccs, concern_coal_ccs,concern_transport_e,concern_transport_bio),na.rm=TRUE)) %>%
                         mutate(confidence_t=length(t)-sum(is.na(c(concern_wind,concern_solar,concern_nuclear,concern_biomass, 
@@ -442,19 +441,19 @@ s<-c("concern_livestock","concern_demand","concern_transport","concern_demand_re
 indicators_concerns<-indicators_concerns %>%
     group_by(Scenario_ID, Year) %>%
     mutate(concern_livestock=ifelse(livestock_drop>=thresholds$livestock_high,3,
-                                 ifelse(livestock_drop<thresholds$livestock_low,1,2))) %>%
+                                 ifelse(livestock_drop<thresholds$livestock_high&livestock_drop>=thresholds$livestock_low,2,1))) %>%
     mutate(concern_demand=ifelse(demand_drop>=thresholds$fe_demand_high,3,
-                              ifelse(demand_drop<thresholds$fe_demand_low,1,2))) %>%
+                              ifelse(demand_drop<thresholds$fe_demand_high&demand_drop>=thresholds$fe_demand_low,2,1))) %>%
     mutate(concern_transport=ifelse(demand_transport_drop>=thresholds$tran_demand_high,3,
-                                 ifelse(demand_transport_drop<thresholds$tran_demand_low,1,2))) %>%
+                                 ifelse(demand_transport_drop<thresholds$tran_demand_high&demand_transport_drop>=thresholds$tran_demand_low,2,1))) %>%
     mutate(concern_demand_re=ifelse(demand_re_drop>=thresholds$res_demand_high,3,
-                                 ifelse(demand_re_drop<thresholds$res_demand_low,1,2))) %>%
+                                 ifelse(demand_re_drop<thresholds$res_demand_high&demand_re_drop>=thresholds$res_demand_low,2,1))) %>%
     mutate(concern_demand_industry=ifelse(demand_industry_drop>=thresholds$ind_demand_high,3,
-                                       ifelse(demand_industry_drop<thresholds$ind_demand_low,1,2))) %>%
+                                       ifelse(demand_industry_drop<thresholds$ind_demand_high&demand_industry_drop>=thresholds$ind_demand_low,2,1))) %>%
     mutate(concern_forest=ifelse(forest_increase>=thresholds$forest_high,3,
-                              ifelse(forest_increase<thresholds$forest_low,1,2))) %>%
+                              ifelse(forest_increase<thresholds$forest_high&forest_increase>=thresholds$forest_low,2,1))) %>%
     mutate(concern_pasture=ifelse(pasture_drop>=thresholds$pasture_high,3,
-                               ifelse(pasture_drop<thresholds$pasture_low,1,2))) %>%
+                               ifelse(pasture_drop<thresholds$pasture_high&pasture_drop>=thresholds$pasture_low,2,1))) %>%
     mutate(product_social=prod(c(concern_livestock,concern_demand,concern_transport,concern_demand_re,
                               concern_demand_industry,concern_forest,concern_pasture),na.rm=TRUE)) %>%
     mutate(confidence_s=length(s)-sum(is.na(c(concern_livestock,concern_demand,concern_transport,concern_demand_re,
@@ -463,19 +462,242 @@ indicators_concerns<-indicators_concerns %>%
     mutate(confidence_soc=ifelse(confidence_s==0,1, ifelse(confidence_s>5,3,2))) %>%
     mutate(concern_social=ifelse(confidence_s==0, NA, concern_social))
 
+
+
 #overall feasibility concerns
 indicators_concerns<-indicators_concerns %>%
                      group_by(Scenario_ID, Year) %>%
-                     mutate(concern_overall=prod(c(concern_governance,concern_economic,concern_tech, concern_social)^(1/4), na.rm = T)) %>%
-                     mutate(concern_overall=ifelse(confidence_t==0&confidence_s==0&confidence_e==0, NA, concern_overall)) %>%
-                     mutate(confidence_o=confidence_e+confidence_t+confidence_s) %>%
-                     mutate(confidence_overall=ifelse(confidence_o>14,3,
-                                               ifelse(confidence_o<5,1,2)))
+                     mutate(concern_overall=prod(c(concern_governance,concern_economic,concern_tech, concern_social)^(1/4), na.rm = T))
+
+```
+
+
+```{r aggregation_dimensions,include=FALSE, MESSAGE=FALSE}
+
+feasibility_agg<-indicators_concerns %>%
+                 filter(Year>2020) %>%
+                 ungroup() %>%
+                 select(c(Scenario_ID)|starts_with("concern")) %>%
+                 group_by(Scenario_ID) %>%
+                 summarise_all(geom_mean) 
+
+tem_category<-indicators_concerns %>%
+              filter(Year==2030) %>%
+              ungroup() %>%
+              select(Scenario_ID, category, SSP_family)
+        
+feasibility_agg<-left_join(feasibility_agg, tem_category, by="Scenario_ID")
+
+agg_1.5<-  feasibility_agg %>%
+           filter(category %in% below_1.5) %>%
+           filter(SSP_family==2) %>%
+           select(Scenario_ID, concern_overall, concern_tech, concern_economic, concern_social, concern_governance) %>%
+           rename(Overall=concern_overall) %>%
+           rename(Technology=concern_tech) %>%
+           rename(Economic=concern_economic) %>%
+           rename(`Socio-cultural`=concern_social) %>%
+           rename(Institutional=concern_governance) %>%
+           pivot_longer(-c(Scenario_ID), names_to = "dimension", values_to = "feasibility_value" ) 
+
+#Preparing data for the overviews over time
+
+time_1.5<- indicators_concerns %>%
+           filter(category %in% below_1.5) %>%
+           filter(SSP_family==2) %>%
+           select(c(Scenario_ID, Year, category)|starts_with("concern")) %>%
+           rename(Overall=concern_overall) %>%
+           rename(Technology=concern_tech) %>%
+           rename(Economic=concern_economic) %>%
+           rename(`Socio-cultural`=concern_social) %>%
+           rename(Institutional=concern_governance) %>%
+           pivot_longer(-c(Scenario_ID, Year, category), names_to = "dimension", values_to = "feasibility_value" ) 
+
+meta_policy<-meta_policy %>%
+            unite("Scenario_ID", Model:Scenario, remove = TRUE) %>%
+            mutate(policy_simple=
+                     ifelse(grepl('P2', Policy_category), "P2",
+                          ifelse(grepl('P3',Policy_category), "P3",
+                                Policy_category)))
+
+time_1.5<-left_join(time_1.5, meta_policy, by="Scenario_ID")
+
+time_all<- indicators_concerns %>%
+           filter(SSP_family==2) %>%
+           select(c(Scenario_ID, Year, category)|starts_with("concern")) %>%
+           rename(Overall=concern_overall) %>%
+           rename(Technology=concern_tech) %>%
+           rename(Economic=concern_economic) %>%
+           rename(`Socio-cultural`=concern_social) %>%
+           rename(Institutional=concern_governance) %>%
+           pivot_longer(-c(Scenario_ID, Year, category), names_to = "dimension", values_to = "feasibility_value" ) 
+
+#Preparing data for the marker scenarios
+
+overall_ips<-indicators_concerns %>%
+             select(Model, Scenario, Year, concern_overall, concern_governance, concern_social, concern_tech, concern_economic)
+
+overall_ips<-left_join(overall_ips, marker_set, by=c("Scenario", "Model"))
+
+overall_ips<-overall_ips %>%
+             filter(!is.na(marker))
 
 ```
 
 
 
 
+## Figures in the main paper
+
+```{r Figure2, echo=FALSE, warning=F, include=TRUE, MESSAGE=F, fig.width=14, fig.height=10,fig.cap="Aggregation over feasibility dimensions", fig.align="center", fig.topcaption=TRUE}
+
+violin<-agg_1.5 %>%
+  rename(`Feasibility concerns`=feasibility_value) %>%
+  drop_na() %>%
+  ggplot( aes(x=`Feasibility concerns`, y=dimension, fill=stat(x)))+
+  geom_density_ridges_gradient(scale = 1,  
+                               jittered_points = TRUE,
+    position = position_points_jitter(height = 0),
+    point_shape = '_', point_size = 3, point_alpha = 1) +
+  scale_fill_gradient(low="#4DBBD5FF", high="#E64B3599", name = "Feasibility concerns")+
+  theme_ipsum() +
+  ggtitle("Feasibility Concerns (2020-2100) - SSP2 - All below 1.5 C") +
+  xlab("Increasing Feasibility Concerns")+
+  ylab("")+
+  scale_y_discrete(limits=c("Technology","Economic","Socio-cultural","Institutional", "Overall"))+
+  coord_flip()+
+  theme(axis.title.y = element_text(size=18), axis.title.x = element_text(size=16))+
+  theme(axis.text.x = element_text(size=20, face = "bold"), axis.title.y = element_text(size=20), legend.text = element_text(size = 20))
+  
+violin
+
+ggsave(here("figures", "figure2_paper.png"), units="in", width=16, height=10, dpi=300)
+
+```
 
 
+
+```{r Figure3, echo=FALSE, warning=F, include=TRUE, MESSAGE=F, fig.width=14, fig.height=10,fig.cap="Aggregation over feasibility dimensions", fig.align="center", fig.topcaption=TRUE}
+
+plot_region<-region_indicators %>%
+  filter(Year>2010) %>%
+  filter(category %in% below_1.5) %>%
+  filter(SSP_pred==2) %>%  
+  ggplot(aes(x=Year, y=concern_governance, colour=Region, fill=Region))+
+  theme(text = element_text(size = 14), angle=90)+
+  stat_smooth(size=2, span=0.5, se=F)+
+  theme_ipsum()+ 
+   xlab("")+
+  ylab("Increasing Feasibility Concerns")+
+    scale_color_uchicago() +
+    scale_fill_uchicago()+
+     theme(axis.title.y = element_text(size=20), legend.text = element_text(size = 20), legend.position = c(0.8,0.8))+
+  ggtitle("Institutional Feasibility Concerns - SSP2 - Reaching 1.5C - Across Regions")
+
+plot_region
+
+ggsave(here("figures", "figure3_paper.png"), units="in", width=14, height=7, dpi=300)
+
+```
+
+
+```{r Figure4, echo=FALSE, warning=F, include=TRUE, MESSAGE=F, fig.width=14, fig.height=10,fig.cap="Aggregation over feasibility dimensions", fig.align="center", fig.topcaption=TRUE}
+
+plot_category<-time_all %>%
+  rename(`Level of concern`=feasibility_value) %>%
+  filter(Year>2010) %>%
+  filter(category!="no-climate-assessment") %>%
+  filter(category!="Above 2C") %>%
+  filter(dimension=="Overall") %>%
+  mutate(category=factor(category,levels=c("1.5C low overshoot", "1.5C high overshoot","Lower 2C", "Higher 2C"))) %>%
+  drop_na() %>%
+  ggplot(aes(x=Year, y=`Level of concern`, color=category, fill=category))+
+  geom_smooth(size=2, span=0.4, se=F)+
+  theme_ipsum() +
+  ylab("Increasing Feasibility Concerns")+
+  xlab("")+
+  scale_color_manual(values = c("#00A08799",
+                                "#4DBBD599",
+                                "#8491B499",
+                                "#F39B7F99",
+                                "#E64B3599"),
+                     breaks = c("Below 1.5C", "1.5C low overshoot", "1.5C high overshoot","Lower 2C", "Higher 2C")) +
+   scale_fill_manual(values = c("#00A08799",
+                                "#4DBBD599",
+                                "#8491B499",
+                                "#F39B7F99",
+                                "#E64B3599"),
+                     breaks = c("Below 1.5C", "1.5C low overshoot", "1.5C high overshoot","Lower 2C", "Higher 2C"))+
+   ylim(1, 1.35)+
+     theme(axis.title.y = element_text(size=20), legend.text = element_text(size = 15), legend.position = c(0.8,0.8))+
+  labs(fill = "Climate categories", color="Climate categories")
+
+
+
+ plot_delay<-time_1.5 %>%
+  rename(`Level of concern`=feasibility_value) %>%
+  filter(Year>2010) %>%
+  filter(category!="Below 1.5C") %>%
+  drop_na() %>%
+   filter(policy_simple!="P???") %>%
+   filter(dimension=="Overall") %>%
+  ggplot(aes(x=Year, y=`Level of concern`, colour=policy_simple, label=Scenario_ID, fill=policy_simple))+
+  stat_smooth(size=2, se=F, span=0.5)+
+  theme_ipsum()+ 
+  xlab("")+
+  scale_color_manual(values = c( "#00A08799",
+                                "gray"),name="Policy category", 
+                      labels=c("Immediate Policy Action (2020)", "Delayed Policy Action (2030)"))+
+  scale_fill_manual(values = c("#00A08799",
+                                "gray"), 
+                      name="Policy category", 
+                      labels=c("Immediate Policy Action (2020)", "Delayed Policy Action (2030)"))+
+  ylim(1,1.5)+
+  ylab("")+
+  theme(axis.title.y = element_text(size=20), legend.text = element_text(size = 15), legend.position = c(0.8,0.8))
+ 
+
+
+plot_time_trade_off<-plot_grid(plot_category, plot_delay, labels = "AUTO" ) 
+
+plot_time_trade_off
+
+ggsave(here("figures", "figure4_paper.png"), units="in", width=14, height=7, dpi=300)
+```
+
+```{r Figure5, echo=FALSE, warning=F, include=TRUE, MESSAGE=F, fig.width=14, fig.height=10,fig.cap="Aggregation over feasibility dimensions", fig.align="center", fig.topcaption=TRUE}
+
+ plot_ips<-overall_ips %>%
+  filter(Year>2010) %>%
+  mutate(ip_label=ifelse(Year==2100,marker, NA)) %>%
+  mutate(marker=ifelse(marker=="LED", "LED/P1", marker)) %>%
+  mutate(marker=ifelse(marker=="S1", "S1/P2", marker)) %>%
+  mutate(marker=ifelse(marker=="S2", "S2/P3", marker)) %>%
+  mutate(marker=ifelse(marker=="S5", "S5/P4", marker)) %>%
+  mutate(ip_label=ifelse(ip_label=="LED", "LED/P1", ip_label)) %>%
+  mutate(ip_label=ifelse(ip_label=="S1", "S1/P2", ip_label)) %>%
+  mutate(ip_label=ifelse(ip_label=="S2", "S2/P3", ip_label)) %>%
+  mutate(ip_label=ifelse(ip_label=="S5", "S5/P4", ip_label)) %>%
+
+  ggplot(aes(x=Year, y=concern_overall, colour=marker, linetype=marker))+
+  geom_smooth(size=2, span=0.5)+
+  scale_color_manual(values = c("LED/P1" = "#00A087FF", "S1/P2" = "#4DBBD5FF", 
+                                 "S2/P3"="#8491B4FF", "S5/P4"="#F39B7FFF"))+
+  geom_text_repel(aes(label=ip_label),
+    force             = 3,
+    nudge_x           = 0.30,
+    direction         = "y",
+    hjust             = 0,
+    segment.size      = 0.6,
+    segment.curvature = -0.3)+
+    ylim(1,1.7)+
+    theme_ipsum()+ 
+    xlab("")+
+    ylab("Increasing feasibility concerns")+
+   scale_x_continuous(breaks=seq(2020,2100,10))+
+  theme(axis.title.y = element_text(size=18), axis.title.x = element_text(size=16), legend.position="none")
+ 
+plot_ips
+
+ggsave(here("figures", "figure5_paper.png"), units="in", width=10, height=5, dpi=300)
+
+```
