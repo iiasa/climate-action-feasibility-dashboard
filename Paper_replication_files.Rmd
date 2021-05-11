@@ -28,97 +28,97 @@ load<-lapply(pkgs, library, character.only=TRUE)
 ## Data preparation
 
 
-```{python pyam_world_data}
+```{python pyam_world_data, include=FALSE, MESSAGE=FALSE}
 #You can import the 1.5C dataset either by using a python package pyam (and the link through reticulate) or by loading it (Release 2.0) from the scenario explorer and saving it in the input folder 
 
-#For this replication file the data was already prepare and is in the input folder
+#For this replication file the data was already prepared and is in the input folder
 
-import pyam
-
-df =pyam.read_iiasa(
-    'IXSE_SR15',
-    model='*',
-    variable=["AR5 climate diagnostics|Temperature|Global Mean|MAGICC6|MED",
-  "Emissions|CO2",
-  "GDP|PPP",
-  "Population",
-  "Investment|Energy Supply",
-  "Investment|Energy Supply|Electricity",
-  "Investment|Energy Supply|Electricity|Solar",
-  "Investment|Energy Supply|Electricity|Wind",
-  "Investment|Energy Supply|Electricity|Nuclear",
-  "Investment|Energy Supply|Electricity|Transmission and Distribution",
-  "Investment|Energy Supply|Electricity|Biomass|w/ CCS",
-  "Investment|Energy Supply|Electricity|Coal|w/ CCS",
-  "Capacity|Electricity|Coal",
-  "Secondary Energy|Electricity|Coal",
-  "Capacity|Electricity|Gas",
-  "Capacity|Electricity|Wind",
-  "Capacity|Electricity|Solar",
-  "Capacity|Electricity|Biomass",
-  "Primary Energy|Biomass",
-  "Primary Energy|Solar",
-  "Secondary Energy|Electricity|Wind",
-  "Secondary Energy|Electricity|Gas",
-  "Primary Energy|Oil",
-  "Price|Primary Energy|Oil",
-  "Price|Carbon",
-  "Price|Secondary Energy|Electricity",
-  "Secondary Energy|Electricity",
-  "Secondary Energy|Electricity|Oil",
-  "Secondary Energy|Electricity|Nuclear",
-  "Secondary Energy|Electricity|Wind",
-  "Secondary Energy|Electricity|Solar",
-  "Secondary Energy|Electricity|Hydro",
-  "Secondary Energy|Electricity|Biomass",
-  "Secondary Energy|Electricity|Biomass|w/ CCS",
-  "Secondary Energy|Electricity|Coal|w/ CCS",
-  "Secondary Energy|Electricity|Gas|w/ CCS",
-  "Secondary Energy|Electricity|Oil|w/ CCS",
-  "Final Energy|Transportation",
-  "Final Energy|Transportation|Electricity",
-  "Final Energy|Transportation|Liquids|Biomass",
-  "Land Cover",
-  "Land Cover|Forest",
-  "Land Cover|Cropland",
-  "Land Cover|Pasture",
-  "Carbon Sequestration|Land Use",
-  "Final Energy",
-  "Final Energy|Residential and Commercial",
-  "Final Energy|Industry",
-  "Food Demand",
-  "Food Demand|Livestock",
-  "Final Energy|Industry|Electricity",
-  "Final Energy|Residential and Commercial|Electricity",
-  "Price|Agriculture|Livestock|Index",
-  "Price|Agriculture|Corn|Index",
-  "Emissions|NOx"],
-   region='World'
-)
-
-df.to_csv('input/full.csv')
+# import pyam
+# 
+# df =pyam.read_iiasa(
+#     'IXSE_SR15',
+#     model='*',
+#     variable=["AR5 climate diagnostics|Temperature|Global Mean|MAGICC6|MED",
+#   "Emissions|CO2",
+#   "GDP|PPP",
+#   "Population",
+#   "Investment|Energy Supply",
+#   "Investment|Energy Supply|Electricity",
+#   "Investment|Energy Supply|Electricity|Solar",
+#   "Investment|Energy Supply|Electricity|Wind",
+#   "Investment|Energy Supply|Electricity|Nuclear",
+#   "Investment|Energy Supply|Electricity|Transmission and Distribution",
+#   "Investment|Energy Supply|Electricity|Biomass|w/ CCS",
+#   "Investment|Energy Supply|Electricity|Coal|w/ CCS",
+#   "Capacity|Electricity|Coal",
+#   "Secondary Energy|Electricity|Coal",
+#   "Capacity|Electricity|Gas",
+#   "Capacity|Electricity|Wind",
+#   "Capacity|Electricity|Solar",
+#   "Capacity|Electricity|Biomass",
+#   "Primary Energy|Biomass",
+#   "Primary Energy|Solar",
+#   "Secondary Energy|Electricity|Wind",
+#   "Secondary Energy|Electricity|Gas",
+#   "Primary Energy|Oil",
+#   "Price|Primary Energy|Oil",
+#   "Price|Carbon",
+#   "Price|Secondary Energy|Electricity",
+#   "Secondary Energy|Electricity",
+#   "Secondary Energy|Electricity|Oil",
+#   "Secondary Energy|Electricity|Nuclear",
+#   "Secondary Energy|Electricity|Wind",
+#   "Secondary Energy|Electricity|Solar",
+#   "Secondary Energy|Electricity|Hydro",
+#   "Secondary Energy|Electricity|Biomass",
+#   "Secondary Energy|Electricity|Biomass|w/ CCS",
+#   "Secondary Energy|Electricity|Coal|w/ CCS",
+#   "Secondary Energy|Electricity|Gas|w/ CCS",
+#   "Secondary Energy|Electricity|Oil|w/ CCS",
+#   "Final Energy|Transportation",
+#   "Final Energy|Transportation|Electricity",
+#   "Final Energy|Transportation|Liquids|Biomass",
+#   "Land Cover",
+#   "Land Cover|Forest",
+#   "Land Cover|Cropland",
+#   "Land Cover|Pasture",
+#   "Carbon Sequestration|Land Use",
+#   "Final Energy",
+#   "Final Energy|Residential and Commercial",
+#   "Final Energy|Industry",
+#   "Food Demand",
+#   "Food Demand|Livestock",
+#   "Final Energy|Industry|Electricity",
+#   "Final Energy|Residential and Commercial|Electricity",
+#   "Price|Agriculture|Livestock|Index",
+#   "Price|Agriculture|Corn|Index",
+#   "Emissions|NOx"],
+#    region='World'
+# )
+# 
+# df.to_csv('input/full.csv')
 
 ```
 
-```{python pyam_region_data}
+```{python pyam_region_data, include=FALSE, MESSAGE=FALSE}
 #You can import the 1.5C dataset either by using a python package pyam (and the link through reticulate) or by loading an .csv file (Release 2.0) from the scenario explorer and saving it in the input folder 
 
 
 #For this replication file the data was already prepare and is in the input folder
 
 
-import pyam
-
-df2 =pyam.read_iiasa(
-    'IXSE_SR15',
-    model='*',
-    variable=[
-  "Emissions|CO2",
-  "GDP|PPP",
-  "Population"]
-)
-
-df2.to_csv('input/region.csv')
+# import pyam
+# 
+# df2 =pyam.read_iiasa(
+#     'IXSE_SR15',
+#     model='*',
+#     variable=[
+#   "Emissions|CO2",
+#   "GDP|PPP",
+#   "Population"]
+# )
+# 
+# df2.to_csv('input/region.csv')
 ```
 
 
