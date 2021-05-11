@@ -31,6 +31,8 @@ load<-lapply(pkgs, library, character.only=TRUE)
 ```{python pyam_world_data}
 #You can import the 1.5C dataset either by using a python package pyam (and the link through reticulate) or by loading it (Release 2.0) from the scenario explorer and saving it in the input folder 
 
+#For this replication file the data was already prepare and is in the input folder
+
 import pyam
 
 df =pyam.read_iiasa(
@@ -40,7 +42,7 @@ df =pyam.read_iiasa(
   "Emissions|CO2",
   "GDP|PPP",
   "Population",
-  "Investment|Energy Supply", 
+  "Investment|Energy Supply",
   "Investment|Energy Supply|Electricity",
   "Investment|Energy Supply|Electricity|Solar",
   "Investment|Energy Supply|Electricity|Wind",
@@ -100,6 +102,10 @@ df.to_csv('input/full.csv')
 
 ```{python pyam_region_data}
 #You can import the 1.5C dataset either by using a python package pyam (and the link through reticulate) or by loading an .csv file (Release 2.0) from the scenario explorer and saving it in the input folder 
+
+
+#For this replication file the data was already prepare and is in the input folder
+
 
 import pyam
 
@@ -403,6 +409,7 @@ indicators_concerns<-indicators_calculated %>%
 
 #technology concerns
 
+t<-c("concern_wind","concern_solar","concern_nuclear","concern_biomass","concern_biomass_ccs","concern_coal_ccs","concern_transport_e","concern_transport_bio")
 
 indicators_concerns <-  indicators_concerns %>%
                         group_by(Scenario_ID, Year) %>%
