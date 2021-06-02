@@ -1,0 +1,903 @@
+---
+title: "Multidimensional Feasibility"
+runtime: shiny
+output:
+  flexdashboard::flex_dashboard:
+    storyboard: true
+    orientation: rows
+    vertical_layout: scroll
+    social: menu
+    theme: cosmo
+    includes:
+      in_header:
+        - 'include_d3.html'
+#   logo: logo.png 
+resource_files:
+- Draft.Rproj
+- output/indicators_long.csv
+- output/regional_governance.csv
+- output/feasibility_aggregated.csv
+- output/indicators_long1.csv
+
+---
+
+
+<style>                     
+.navbar {
+  background-color:#003D79;
+  border-color:white;}
+  
+.navbar-brand {
+color:white!important;}
+
+.navbar-logo img {
+    max-width:46px;
+     max-height:46px;}
+
+.section.sidebar {background-color: white;}
+
+.irs-slider { width: 8px; height: 20px; top: 20px; background: red; }
+.irs-slider.from { width: 8px; height: 20px; top: 20px; background: orange; }
+.irs-slider.to { width: 8px; height: 20px; top: 20px; background: red; }
+.irs-line {background: white} 
+.irs-bar {background: white} 
+.irs-bar {border-top-color:grey} 
+.irs-bar {border-bottom-color: grey}
+
+
+</style>   
+
+
+```{r setup, include=FALSE}
+library(vroom)
+library(flexdashboard)
+library(tidyverse)
+library(plotly)
+library(here)
+library(hablar)
+library(shiny)
+library(rsconnect)
+library(DT)
+library(viridis)
+library(hrbrthemes)
+library(ggsci)
+library(fresh)
+library(d3r)
+library(parcoords)
+library(crosstalk)
+library(RColorBrewer)
+
+```
+
+
+```{r data, include=FALSE}
+indicators<-vroom(here("output", "indicators_long1.csv"))
+aggregated<-vroom(here("output", "feasibility_aggregated.csv"))
+regional<-vroom(here("output", "regional_governance.csv"))
+temperature<-indicators %>%
+             select(Scenario_ID, Year, ar5_climate_diagnostics_temperature_global_mean_magicc6_med) %>%
+             filter(Year==2100) %>%
+             rename(temperature_2100=ar5_climate_diagnostics_temperature_global_mean_magicc6_med) %>%
+            select(-Year)
+indicators<- left_join(indicators, temperature, by=c("Scenario_ID"))
+aggregated<- left_join(aggregated, temperature, by=c("Scenario_ID"))
+indicators<-indicators %>%
+            filter(SSP_family==2)
+
+
+colours = c("Below 1.5C"="#00A087B2", "1.5C low overshoot"="#4DBBD5B2", "1.5C high overshoot"="#3C5488B2","Lower 2C"="#7E6148B2", "Higher 2C"="#E64B35B2") 
+
+```
+
+
+
+Project 
+=====================================
+
+
+
+Column {.sidebar data-width=600}
+-------------------------------------
+### Feasibility evaluation framework
+
+
+<center>
+![Overall framework](framework2.png){#id .class width=90% height=100%}
+</center>
+
+
+Row {data-width=800}
+-------------------------------------
+
+### __Funding__:
+
+This study was funded by the European Union’s Horizon 2020 research and innovation programme under Grant Agreement 821471 (__ENGAGE__).
+
+This work is the product of the collaboration between the International Institute for Applied Systems Analysis (IIASA) and the RFF-CMCC European Institute on Economics and the Environment (EIEE). 
+
+<center>
+![](logos.png){#id .class width=60%}
+</center>
+
+Row {data-width=800}
+-------------------------------------
+
+### __Project description__:
+
+Long-term mitigation scenarios developed by Integrated Assessment Models (IAMs) underpin the recent IPCC reports and have been critical to identify the system transformations that are required to meet stringent climate goals. However, they have been criticized for proposing pathways that may prove challenging to implement in the real world and for failing to capture the social and institutional challenges of the transition. There is a growing interest to assess the feasibility of these scenarios, but past research has mostly focused on theoretical considerations.
+
+Our project proposes a novel and versatile multidimensional framework that allows evaluating and comparing decarbonization pathways by systematically quantifying feasibility concerns across geophysical, technological, economic, socio-cultural and institutional dimensions. This framework allows assessing the timing, disruptiveness and scale of feasibility concerns, and identifying trade-offs across different feasibility dimensions. 
+
+As a first implementation of our framework, we mapped the feasibility concerns of the IPCC 1.5°C Special Report scenarios. We selected 24 quantitative indicators and propose feasibility thresholds based on insights from an extensive analysis of the literature and empirical data. 
+
+As a complement of our paper, we developed an interactive online tool that allows the user to look at our framework in more detail and to perform sensitivity analyses by defining different thresholds for each indicator and assessing how this affects feasibility evaluations.
+
+
+
+Paper:
+
+Brutschin, E., Pianta, S., Tavoni, M., Riahi, K.,  Bosetti, V., Marangoni, G., and van Ruijven, B. (2021) A multidimensional feasibility evaluation of low-carbon scenarios. *Environmental Research Letters*.
+
+doi: 
+
+Row {data-width=800}
+-------------------------------------
+
+### __Source of scenario data:__
+
+This work uses the scenario ensemble
+from the **IAMC 1.5°C Scenario Explorer and Data hosted by IIASA** supporting the 
+[IPCC Special Report on Global Warming of 1.5°C](https://www.ipcc.ch/sr15).
+
+Please cite the data as:
+
+Daniel Huppmann, Elmar Kriegler, Volker Krey, Keywan Riahi, Joeri Rogelj, Steven K. Rose, John Weyant, Nico Bauer, Christoph Bertram, Valentina Bosetti, Katherine Calvin, Jonathan Doelman, Laurent Drouet, Johannes Emmerling, Stefan Frank, Shinichiro Fujimori, David Gernaat, Arnulf Grubler, Celine Guivarch, Martin Haigh, Christian Holz, Gokul Iyer, Etsushi Kato, Kimon Keramidas, Alban Kitous, Florian Leblanc, Jing-Yu Liu, Konstantin Löffler, Gunnar Luderer, Adriana Marcucci, David McCollum, Silvana Mima, Alexander Popp, Ronald D. Sands, Fuminori Sano, Jessica Strefler, Junichi Tsutsui, Detlef Van Vuuren, Zoi Vrontisi, Marshall Wise, and Runsen Zhang.
+
+IAMC 1.5°C Scenario Explorer and Data hosted by IIASA.
+*Integrated Assessment Modeling Consortium & International Institute for Applied Systems Analysis*, 2018.
+doi: [https://doi.org/10.22022/SR15/08-2018.15429](10.22022/SR15/08-2018.15429) |
+url: [https://data.ece.iiasa.ac.at/iamc-1.5c-explorer](data.ece.iiasa.ac.at/iamc-1.5c-explorer)
+
+Row {data-width=800}
+-------------------------------------
+
+### __Key tools that were used to develop this application:__
+
+Flexdashboard for the general layout: https://CRAN.R-project.org/package=flexdashboard
+
+Plotly for interactive graphics: https://github.com/ropensci/plotly 
+
+The parallel coorindates visualization is based on the work by Giacomo Marangoni (https://github.com/jackjackk) 
+and inspired by the parasoljs toolbox: https://parasoljs.github.io/ 
+
+In the final implementation in R we used the "parcoords package": https://cran.r-project.org/web/packages/parcoords/parcoords.pdf 
+
+in combination with "crosstalk": https://rstudio.github.io/crosstalk/
+
+and "datatable": https://rstudio.github.io/DT/
+
+Code to replicate all figures from the paper and the dashboard is available here: https://github.com/iiasa/climate-action-feasibility-dashboard 
+
+Instructions 
+=====================================
+
+
+Column {.sidebar data-width=600}
+-------------------------------------
+
+### __Scenario evaluation methodology__
+
+**Step 1 - Feasibility dimensions**
+
+Definition of feasibility dimensions.
+
+- Geophysical
+- Technological
+- Economic
+- Socio-cultural
+- Institutional
+
+**Step 2 - Indicators**
+
+For each dimension, selection of relevant indicators measuring decadal changes.  
+
+**Step 3 - Levels of concern & thresholds**
+
+Categorization of level of feasibility concern for *each indicator in each decade* based on thresholds based on the literature and available empirical data.
+
+  - low concern (1)
+  - medium concern (2)
+  - high concern(3)
+
+**Step 4 - Aggregation (geometric mean) & assessment**
+
+Aggregation *within each dimension*   
+- To assess trade-offs among feasibility dimensions
+
+Aggregation *across dimensions at different points in time*  
+- To assess the timing and disruptiveness of the transformation
+
+Aggregation *across dimensions and across time*  
+- To assess the scale of the transformation
+
+
+
+
+
+Row {data-width=400}
+-------------------------------------
+
+### __How to use this interactive tool__
+
+This interactive tool allows to use our framework to perform feasibility evaluations of the IPCC 1.5°C Special Report scenarios. 
+
+
+
+* The different tabs display feasibility evaluations separately for each of the five dimensions. 
+- The last tab displays the resulting aggregate feasibility evaluation.
+
+
+* On the **right hand side** of each tab, the user can see a **graph** of the evolution over time of feasibility concerns for the specific dimension.  Feasibility concerns are computed as the geometric mean of the levels of concern for each indicator. 
+  + Values for each scenario in each decade are represented with dots.
+  + Hovering over the dots allows identifying the scenario ID. 
+  + Scenarios belonging to different climate categories are represented in different colors. 
+  + The average concerns (local smoothing) for each climate category are represented by the colored lines.  
+  
+  
+* On the **left hand side bar** of each tab, the **indicators** are presented with the medium (orange tag) and high (red tag) feasibility concern thresholds that were defined based on insights from an analysis of the literature and empirical data (see paper for details). 
+
+
+* The user can **move the sliders to define different feasibility concern thresholds** and see how feasibility evaluations change in the graph on the right. 
+
+
+
+
+
+
+Geophysical
+=====================================
+
+
+Thresholds {.sidebar data-width=400}
+-------------------------------------
+
+
+### Geophysical Indicators 
+
+```{r, echo=FALSE, message=FALSE}
+                      
+  sliderInput("primary_energy_biomass", "Biomass generation - primary energy (EJ)",
+            min = round(min(s(indicators$primary_energy_biomass))),
+            max = round(max(s(indicators$primary_energy_biomass))), 
+            value =c(300,600), step = 50)
+  
+  sliderInput("secondary_energy_electricity_wind", "Wind generation - secondary energy  (EJ)",
+            min = round(min(s(indicators$secondary_energy_electricity_wind))),
+            max = round(max(s(indicators$secondary_energy_electricity_wind))), 
+            value =c(830,2000), step = 50)
+  
+  sliderInput("primary_energy_solar", "Solar generation - primary energy  (EJ)",
+            min = round(min(s(indicators$primary_energy_solar))),
+            max = round(max(s(indicators$primary_energy_solar))),  
+            value =c(800,1600), step = 50)
+  
+```
+
+Row {data-width=500}{.storyboard}
+-------------------------------------
+### __Explanation__
+
+
+* This graph depicts the evolution over time of geophysical feasibility concerns, which are computed for each decade by aggregating the concerns for all geophysical indicators, using the geometric mean.
+
+* Each dot represents a scenario. You can see the scenario ID by hovering over the dots. 
+
+* The average concerns for each climate category are represented by the colored lines. You can also deselect certain categories by clicking on them within the legend to explore the scenarios within a group in more detail.     
+
+
+* You can __change the thresholds__ for <span style="color: orange;">__medium (orange tag)__</span> and <span style="color: red;">__high levels (red tag)__</span>  of concerns by moving the sliders on the left, and the graph and table below will change accordingly. The range of thresholds is based on the minimum and maximum value of the indicator within the scenario ensemble. 
+
+
+
+Row {data-width=500}{.storyboard}
+-------------------------------------
+### __Geophysical Feasibility Evaluation__
+
+
+
+```{r, echo=FALSE, message=FALSE}
+
+plotlyOutput("geophysicalPlot")
+
+    output$geophysicalPlot = renderPlotly({
+df1 <- indicators %>%
+  filter(Year>=2030) %>%
+  filter(SSP_family==2) %>%
+  filter(category!="no-climate-assessment") %>%
+  drop_na(category) %>%
+  filter(category!="Above 2C") %>%
+  mutate(concern_biomass_geo=ifelse(primary_energy_biomass>=input$primary_energy_biomass[2],3,
+                             ifelse(primary_energy_biomass<input$primary_energy_biomass[1],1,2))) %>%
+  mutate(concern_wind_geo=ifelse(secondary_energy_electricity_wind>=input$secondary_energy_electricity_wind[2],3,
+                          ifelse(secondary_energy_electricity_wind<input$secondary_energy_electricity_wind[1],1,2))) %>%
+  mutate(concern_solar_geo=ifelse(primary_energy_solar>=input$primary_energy_solar[2],3,
+                          ifelse(primary_energy_solar<input$primary_energy_solar[1],1,2))) %>%
+   mutate(product_geo=concern_biomass_geo*concern_wind_geo*concern_solar_geo) %>%
+   mutate(concern_geo=(product_geo)^(1/3)) %>%
+   mutate(category=factor(category,levels=c("1.5C low overshoot", "1.5C high overshoot","Lower 2C", "Higher 2C"))) %>%
+   drop_na(concern_geo)
+
+plot_geophysical<- df1 %>%
+                drop_na(category) %>%
+                ggplot(aes(x=Year,concern_geo, color=category, fill=category, label=Scenario_ID))+
+                geom_jitter(width = 2, size=1.2)+
+                stat_smooth(size=0.8, span=0.5, se=F)+
+                scale_color_manual(values = colours)+
+                scale_fill_manual(values = colours)+
+            scale_x_continuous(breaks=seq(2020,2100,10))+
+            ylim(1, 3)+
+            xlab("")+
+            ylab("Increasing feasibility concerns")+
+            ggtitle("Geophysical concerns")+
+            theme_ipsum()+
+            theme(axis.title.y = element_text(size=14))
+
+          ggplotly(plot_geophysical, tooltip = c("label"))
+    })
+
+    
+    
+```
+
+<!-- In our evaluation of geophysical constraints, we focus on the technologies that play a major role in mitigation pathways. We assess whether the levels of primary energy generation using biomass and solar, and the levels of secondary energy generation using wind in electricity in each decade violate potentials identified in the literature.  -->
+
+
+
+Row {data-width=500}
+-------------------------------------
+
+### Scenarios that are __above__ the <span style="color: red;">__high levels (red tag)__</span> in at least one of the geophysical indicators - list of scenarios with <span style="color: red;">__higher  feasibility concerns__</span> (the table is fully searchable)
+
+```{r, echo=FALSE, message=FALSE}
+renderDT({
+table<-indicators  %>%
+            filter(primary_energy_biomass>input$primary_energy_biomass[2] |      secondary_energy_electricity_wind>input$secondary_energy_electricity_wind[2]|primary_energy_solar>input$primary_energy_solar[2]) %>%
+            filter(SSP_family==2) %>%
+            filter(category!="no-climate-assessment") %>%
+            filter(category!="Above 2C") %>%
+            mutate(Year=as.factor(Year)) %>%
+            rename(`Biomass EJ`=primary_energy_biomass) %>%
+            rename(`Wind EJ`=secondary_energy_electricity_wind) %>%
+            rename(`Solar EJ`=primary_energy_solar) %>%
+            mutate(category=as.factor(category))
+            
+   DT::datatable(table[, c( "Model","Scenario","category","Year","Biomass EJ", "Wind EJ", "Solar EJ")],
+  rownames = FALSE,filter="top", options = list(pageLength = 20, scrollX=T)
+  )
+ })
+    
+```
+
+
+    
+Technological
+=======================================================================
+
+Thresholds {.sidebar data-width=400}
+-------------------------------------
+
+### Technological Indicators 
+
+**Electricity sector (decadal market gains in pp) **  
+<!-- ***Established technologies*** -->
+
+
+```{r, echo=FALSE, message=FALSE}
+sliderInput("wind_scale", "Wind share scale-up",
+             min = round(min(s(indicators$wind_scale))),
+            max = round(max(s(indicators$wind_scale))), 
+            value =c(10,20), step = 1
+)
+sliderInput("solar_scale", "Solar share scale-up",
+            min = round(min(s(indicators$solar_scale))),
+            max = round(max(s(indicators$solar_scale))), 
+            value =c(10,20), step = 1
+)
+sliderInput("nuclear_scale", "Nuclear share scale-up",
+            min = round(min(s(indicators$nuclear_scale))),
+            max = round(max(s(indicators$nuclear_scale))), 
+            value =c(5,10), step = 1
+)
+```
+
+<!-- ***Emerging technologies*** -->
+
+```{r, echo=FALSE, message=FALSE}
+sliderInput("biomass_scale", "Biomass share scale-up",
+            min = round(min(s(indicators$biomass_scale))),
+            max = round(max(s(indicators$biomass_scale))), 
+            value =c(2,5), step = 1
+)
+sliderInput("coal_ccs_scale", "Coal with CCS share scale-up",
+            min = round(min(s(indicators$coal_ccs_scale))),
+            max = round(max(s(indicators$coal_ccs_scale))), 
+            value =c(2,5), step = 1
+)
+sliderInput("biomass_ccs_scale", "BECCS share scale-up",
+            min = round(min(s(indicators$biomass_ccs_scale))),
+            max = round(max(s(indicators$biomass_ccs_scale))), 
+            value =c(2,5), step = 1
+)
+```
+
+**Transport sector (decadal market gains in pp)**  
+
+```{r, echo=FALSE, message=FALSE}
+sliderInput("transport_e_increase", "Electricity share in transport scale-up",
+            min = round(min(s(indicators$transport_e_increase))),
+            max = round(max(s(indicators$transport_e_increase))),  
+            value =c(10,15), step = 1
+)
+sliderInput("transport_bio_increase", "Biofuels share in transport scale-up",
+            min = round(min(s(indicators$transport_bio_increase))),
+            max = round(max(s(indicators$transport_bio_increase))), 
+            value =c(10,15), step = 1
+)
+```
+
+
+
+
+Row {data-width=500}{.storyboard}
+-------------------------------------
+### __Explanation__
+
+
+* This graph depicts the evolution over time of technological feasibility concerns (purely from the __technological maturity__ perspective), which are computed for each decade by aggregating the concerns for all technological indicators, using the geometric mean.
+
+* Each dot represents a scenario. You can see the scenario ID by hovering over the dots. 
+
+* The average concerns for each climate category are represented by the colored lines. You can also deselect certain categories by clicking on them within the legend to explore the scenarios within a group in more detail.     
+
+* You can __change the thresholds__ for <span style="color: orange;">__medium (orange tag)__</span> and <span style="color: red;">__high levels (red tag)__</span>  of concerns by moving the sliders on the left, and the graph and table below will change accordingly. The range of thresholds is based on the minimum and maximum value of the indicator within the scenario ensemble. 
+
+
+Row {data-width=500}{.storyboard}
+-------------------------------------
+### __Technological Feasibility Evaluation__ (given many indicators it might __take time__ for the graph to appear)
+  
+
+```{r, echo=FALSE, message=FALSE}
+ 
+    plotlyOutput("technologyPlot")
+    
+    output$technologyPlot = renderPlotly({
+df3<-indicators %>%
+    filter(Year>=2030) %>%
+    filter(SSP_family==2) %>%
+    filter(category!="no-climate-assessment") %>%
+    filter(category!="Above 2C") %>%
+    mutate(concern_wind=ifelse(wind_scale>=input$wind_scale[2], 3,
+    ifelse(wind_scale<input$wind_scale[1],1,2))) %>%
+    mutate(concern_solar=ifelse(solar_scale>=input$solar_scale[2], 3,
+    ifelse(solar_scale<input$solar_scale[1],1,2))) %>%
+    mutate(concern_nuclear=ifelse(nuclear_scale>=input$nuclear_scale[2],3,
+    ifelse(nuclear_scale<input$nuclear_scale[1],1,2))) %>%
+    mutate(concern_biomass=ifelse(biomass_scale>=input$biomass_scale[2],3,
+    ifelse(biomass_scale<input$biomass_scale[1],1,2))) %>%
+    mutate(concern_biomass_ccs=ifelse(biomass_ccs_scale>=input$biomass_ccs_scale[2],3,
+    ifelse(biomass_ccs_scale<input$biomass_ccs_scale[1],1,2))) %>%
+     mutate(concern_coal_ccs=ifelse(coal_ccs_scale>=input$coal_ccs_scale[2],3,
+     ifelse(coal_ccs_scale<input$coal_ccs_scale[1],1,2)))  %>%
+     mutate(concern_transport_e=ifelse(transport_e_increase>=input$transport_e_increase[2],3,
+     ifelse(transport_e_increase<input$transport_e_increase[1],1,2)))%>%
+    mutate(concern_transport_bio=ifelse(transport_bio_increase>=input$transport_bio_increase[2],3,
+    ifelse(transport_bio_increase<input$transport_bio_increase[1], 1,2))) %>%
+    mutate(product_technological=concern_wind*concern_solar*concern_nuclear*concern_biomass       *concern_biomass_ccs*concern_coal_ccs*concern_transport_e*concern_transport_bio) %>%
+    mutate(confidence_t=8-sum(is.na(c(concern_wind,concern_solar,concern_nuclear,concern_biomass,
+concern_biomass_ccs, concern_coal_ccs,concern_transport_e,concern_transport_bio)))) %>%
+    mutate(concern_tech=product_technological^(1/8))%>%
+    mutate(confidence_tech=ifelse(confidence_t==0,1, ifelse(confidence_t>7,3,2))) %>%
+    mutate(category=factor(category,levels=c("Below 1.5C", "1.5C low overshoot", "1.5C high overshoot","Lower 2C", "Higher 2C"))) 
+     
+ 
+          plot_technology<- df3 %>%
+          ggplot(aes(x=Year,concern_tech, color=category, fill=category, label=Scenario_ID))+
+          geom_jitter(width = 2, size=1.2)+
+          stat_smooth(size=0.8, span=0.5, se=F)+
+           ggtitle("Technological concerns")+
+           theme_ipsum()+
+            xlab("")+
+            ylab("Increasing feasbility concerns")+
+            scale_color_manual(values = colours)+
+            scale_fill_manual(values = colours)+
+            ylim(1, 3)+
+                     theme(axis.title.y = element_text(size=14))+
+             scale_x_continuous(breaks=seq(2020,2100,10))
+          
+          ggplotly(plot_technology, tooltip = c("label"))
+    })
+```
+
+
+Row {data-width=500}
+-------------------------------------
+### ### Scenarios that are __above__ the <span style="color: red;">__high levels (red tag)__</span> in at least one of the technological indicators - list of scenarios with <span style="color: red;">__higher  feasibility concerns__</span> (the table is fully searchable)
+
+
+```{r, echo=FALSE, message=FALSE}
+renderDT({
+table2<-indicators  %>%
+            filter(biomass_scale>input$biomass_scale[2]|wind_scale>input$wind_scale[2]|solar_scale>input$solar_scale[2]|biomass_ccs_scale>input$biomass_ccs_scale[2]|nuclear_scale>input$nuclear_scale[2]|coal_ccs_scale>input$coal_ccs_scale[2]|transport_e_increase>input$transport_e_increase[2]&transport_bio_increase>input$transport_bio_increase[2]) %>%
+            filter(SSP_family==2) %>%
+            filter(category!="no-climate-assessment") %>%
+            filter(category!="Above 2C") %>%
+            mutate(Year=as.factor(Year)) %>%
+            mutate(category=as.factor(category)) 
+            
+   DT::datatable(table2[, c( "Model","Scenario","category", "Year","wind_scale", "solar_scale", "biomass_scale", "biomass_ccs_scale")],
+  rownames = FALSE,filter="top", options = list(pageLength = 20, scrollX=T)
+  )
+ })
+    
+```
+
+
+
+
+Economic
+=======================================================================
+
+Thresholds {.sidebar data-width=400}
+-------------------------------------
+
+### Economic Indicators 
+
+```{r, echo=FALSE, message=FALSE} 
+  sliderInput("gdp_loss", "GDP losses (decadal difference % in mitigation vs. baseline)",
+            min = round(min(s(indicators$gdp_loss))),
+            max = round(max(s(indicators$gdp_loss))), 
+            value =c(5,10), step = 1)
+  sliderInput("carbon_price_npv", "Carbon price (NPV in $, 5% discount rate)",
+            min = round(min(s(indicators$carbon_price_npv))),
+            max = 1000, 
+            value =c(60,120), step = 10)
+  
+  sliderInput("invest_ratio", "Energy investments (Ratio between investments in mitigation vs. baseline)",
+            min = round(min(s(indicators$invest_ratio))),
+            max = round(max(s(indicators$invest_ratio))),  
+            value =c(1.5,2), step = 0.1
+)
+sliderInput("coal_stranded2", "Stranded coal generation (% share of prematurely retired coal power generation)",
+            min = round(min(s(indicators$coal_stranded2))),
+            max = round(max(s(indicators$coal_stranded2))), 
+            value =c(20,30), step = 0.1
+)
+```
+
+<!-- Thresholds {.sidebar data-width=400} -->
+<!-- ------------------------------------- -->
+<!-- ### Explanations -->
+
+<!--      Carbon price: Carbon price levels (NPV) & decadal increases (60\$ / 120\$ & 5x).       -->
+<!--      GDP losses: Decadal percentage difference in GDP in  mitigation vs. baseline     scenario ( 5 % / 10 %).   -->
+
+<!--      Energy investments: Ratio between investments in mitigation vs. baseline in a given decade (1.2 / 1.5).   -->
+
+<!--      Stranded coal assets: Share of prematurely retired coal power generation in a given decade (20 % /50 %) -->
+
+
+Row {data-width=500}{.storyboard}
+-------------------------------------
+### __Explanation__
+
+
+* This graph depicts the evolution over time of economic feasibility concerns (purely from the mitigation costs and efforts perspective), which are computed for each decade by aggregating the concerns for all economic indicators, using the geometric mean.
+
+* Each dot represents a scenario. You can see the scenario ID by hovering over the dots. 
+
+* The average concerns for each climate category are represented by the colored lines. You can also deselect certain categories by clicking on them within the legend to explore the scenarios within a group in more detail.     
+
+* You can __change the thresholds__ for <span style="color: orange;">__medium (orange tag)__</span> and <span style="color: red;">__high levels (red tag)__</span>  of concerns by moving the sliders on the left, and the graph and table below will change accordingly. The range of thresholds is based on the minimum and maximum value of the indicator within the scenario ensemble. 
+
+
+Row {data-width=500}{.storyboard}
+-------------------------------------
+### __Economic Feasibility Evaluation__
+
+
+```{r, echo=FALSE, message=FALSE}
+ 
+    plotlyOutput("economicPlot")
+    
+    output$economicPlot = renderPlotly({
+#Economic indicators      
+            
+df2 <- indicators %>%
+      #select(Scenario_ID, Year, gdp_loss, carbon_price_npv,invest_ratio,coal_stranded2,category) %>%
+      filter(Year>=2030) %>%
+      filter(SSP_family==2) %>%
+      filter(category!="no-climate-assessment") %>%
+      filter(category!="Above 2C") %>%
+      mutate(concern_gdp=ifelse(gdp_loss>=input$gdp_loss[2],3, 
+                          ifelse(gdp_loss<input$gdp_loss[1],1,2))) %>%
+      mutate(concern_carbon=ifelse(carbon_price_npv>=input$carbon_price_npv[2],3, 
+                          ifelse(carbon_price_npv<input$carbon_price_npv[1],1,2))) %>%
+      mutate(concern_investment=ifelse(invest_ratio>=input$invest_ratio[2],3, 
+                          ifelse(invest_ratio<input$invest_ratio[1],1,2))) %>%
+      mutate(concern_coal=ifelse(coal_stranded2>=input$coal_stranded2[2],3, 
+                          ifelse(coal_stranded2<input$coal_stranded2[1],1,2))) %>%
+      mutate(product_economic=concern_gdp*concern_carbon*concern_investment*concern_coal)%>%
+      mutate(concern_economic_geom=(product_economic)^(1/4)) %>%
+  # mutate(concern_economic_mean=(concern_gdp+concern_carbon+invest_ratio+coal_stranded2)/4) %>%
+      mutate(category=factor(category,levels=c("Below 1.5C","1.5C low overshoot", "1.5C high overshoot","Lower 2C", "Higher 2C"))) 
+ 
+plot_economic<- df2 %>%
+                ggplot(aes(x=Year,concern_economic_geom, color=category, fill=category, label=Scenario_ID))+
+                geom_jitter(width=2,size=1.2)+
+                stat_smooth(size=0.8, span=0.5, se=F)+
+                ggtitle("Economic concerns")+
+                theme_ipsum()+
+            xlab("")+
+            ylab("Increasing feasibility concerns")+
+            scale_color_manual(values = colours)+
+            scale_fill_manual(values = colours)+
+                     ylim(1,3)+
+                     theme(axis.title.y=element_text(size=14))
+          
+          ggplotly(plot_economic, tooltip = c("label"))
+    })
+```   
+
+
+
+
+Socio-cultural
+=======================================================================
+
+
+Thresholds {.sidebar data-width=400}
+-------------------------------------
+### Socio-cultural Indicators 
+**Energy Sector**
+
+```{r, echo=FALSE, message=FALSE}
+sliderInput("demand_drop", "Energy demand - percentage change",
+            min = round(min(s(indicators$demand_drop))),
+            max = round(max(s(indicators$demand_drop))), 
+            value =c(10,20), step = 1
+)
+sliderInput("demand_re_drop", "Residential energy demand - percentage change",
+            min = round(min(s(indicators$demand_re_drop))),
+            max = round(max(s(indicators$demand_re_drop))), 
+            value =c(10,20), step = 1
+)
+sliderInput("demand_transport_drop", "Transport energy demand - percentage change",
+            min = round(min(s(indicators$demand_transport_drop))),
+            max = round(max(s(indicators$demand_transport_drop))), 
+            value =c(10,20), step = 1
+)
+sliderInput("demand_industry_drop", "Industry energy demand - percentage change",
+            min = round(min(s(indicators$demand_industry_drop))),
+            max = round(max(s(indicators$demand_industry_drop))), 
+            value =c(10,20), step = 1
+)
+```
+
+**Land Sector**
+
+```{r, echo=FALSE, message=FALSE}
+sliderInput("livestock_drop", "Livestock share of food demand change",
+            min = round(min(s(indicators$livestock_drop))),
+            max = round(max(s(indicators$livestock_drop))), 
+            value =c(0.5,1), step = 0.1
+)
+sliderInput("forest_increase", "Forest cover percentage change",
+            min = round(min(s(indicators$forest_increase))),
+            max = round(max(s(indicators$forest_increase))), 
+            value =c(2,5), step = 1
+)
+sliderInput("pasture_drop", "Pasture cover percentage change",
+            min = round(min(s(indicators$pasture_drop))),
+            max = round(max(s(indicators$pasture_drop))), 
+            value =c(5,10), step = 1
+)
+```
+
+
+
+
+Row {data-width=500}{.storyboard}
+-------------------------------------
+### __Explanation__
+
+
+* This graph depicts the evolution over time of socio-cultural feasibility concerns (by focusing on shifts in demand), which are computed for each decade by aggregating the concerns for all socio-cultural indicators, using the geometric mean.
+
+* Each dot represents a scenario. You can see the scenario ID by hovering over the dots. 
+
+* The average concerns for each climate category are represented by the colored lines. You can also deselect certain categories by clicking on them within the legend to explore the scenarios within a group in more detail.     
+
+* You can __change the thresholds__ for <span style="color: orange;">__medium (orange tag)__</span> and <span style="color: red;">__high levels (red tag)__</span>  of concerns by moving the sliders on the left, and the graph and table below will change accordingly. The range of thresholds is based on the minimum and maximum value of the indicator within the scenario ensemble. 
+
+
+
+Row {data-width=500}{.storyboard}
+-------------------------------------
+### __Socio-cultural Feasibility Evaluation__ (given many indicators it might take time for the graph to appear)
+
+
+```{r, echo=FALSE, message=FALSE}
+    plotlyOutput("socialPlot")
+    
+    output$socialPlot = renderPlotly({
+df4<-indicators %>%
+    filter(Year>=2030) %>%
+    filter(SSP_family==2) %>%
+    filter(category!="no-climate-assessment") %>%
+    filter(category!="Above 2C") %>%
+    group_by(Scenario_ID, Year) %>%
+    mutate(concern_livestock=ifelse(livestock_drop>=input$livestock_drop[2],3,
+                                 ifelse(livestock_drop<input$livestock_drop[1],1,2))) %>%
+    mutate(concern_demand=ifelse(demand_drop>=input$demand_drop[2],3,
+                              ifelse(demand_drop<input$demand_drop[1],1,2))) %>%
+    mutate(concern_transport=ifelse(demand_transport_drop>=input$demand_transport_drop[2],3,
+                                 ifelse(demand_transport_drop<input$demand_transport_drop[1],1,2))) %>%
+    mutate(concern_demand_re=ifelse(demand_re_drop>=input$demand_re_drop[2],3,
+                                 ifelse(demand_re_drop<demand_re_drop[1],1,2))) %>%
+    mutate(concern_demand_industry=ifelse(demand_industry_drop>=input$demand_industry_drop[2],3,
+                                       ifelse(demand_industry_drop<demand_industry_drop[1],1,2))) %>%
+    mutate(concern_forest=ifelse(forest_increase>=input$forest_increase[2],3,
+                              ifelse(forest_increase<forest_increase[1],1,2))) %>%
+    mutate(concern_pasture=ifelse(pasture_drop>=input$pasture_drop[2],3,
+                               ifelse(pasture_drop<input$pasture_drop[1],1,2))) %>%
+    mutate(product_social=concern_livestock*concern_demand*concern_transport*concern_demand_re*concern_demand_industry*concern_forest*concern_pasture) %>%
+    mutate(concern_social=product_social^(1/7)) %>%
+    mutate(category=factor(category,levels=c("Below 1.5C", "1.5C low overshoot", "1.5C high overshoot","Lower 2C", "Higher 2C"))) 
+ 
+          plot_social<- df4 %>%
+          ggplot(aes(x=Year,concern_social, color=category, fill=category, label=Scenario_ID))+
+          geom_jitter(width=2, size=1.2)+
+          stat_smooth(size=0.8, span=0.5, se=F)+
+           ggtitle("Socio-cultural concerns")+
+           theme_ipsum()+
+            xlab("")+
+            ylab("Increasing feasibility concerns")+
+            scale_color_manual(values = colours)+
+                scale_fill_manual(values = colours)+
+            ylim(1,3)+
+            theme(axis.title.y=element_text(size=14))
+          
+          ggplotly(plot_social, tooltip = c("label"))
+    })
+```
+
+  
+
+Institutional
+=======================================================================
+
+Thresholds {.sidebar data-width=400}
+-------------------------------------
+
+### Institutional indicator
+
+The institutional feasibility evaluation is based on the combination of governance levels and decreases in per capita CO2 emissions. The idea is that higher institutional feasibility concerns are present with higher decreases in emissions in regions with lower  governance levels.  
+
+This evaluation is performed at the regional level.  
+
+```{r, echo=FALSE, message=FALSE}
+sliderInput("gov", "Governance level at which mitigation is feasible (1 standing for high governance)",
+            min = round(min(s(regional$gov))),
+            max = round(max(s(regional$gov))),  
+            value =c(0.6), step =0.01
+)
+sliderInput("emissions_drop", "Rate of per capita emissions decrease that is feasible at the specified governance level",
+            min = round(min(s(regional$emissions_drop))),
+            max = round(max(s(regional$emissions_drop))), 
+            value =c(20), step = 1
+)
+```
+
+Row {data-width=800}{.storyboard}
+-------------------------------------
+### __Institutional Feasibility Evaluation__
+
+
+```{r, echo=FALSE, message=FALSE}
+ 
+plotlyOutput("governancePlot")
+    
+    output$governancePlot = renderPlotly({
+df6 <- regional %>%
+      filter(Year>=2020) %>%
+      filter(SSP_pred==2) %>%
+      filter(category!="no-climate-assessment") %>%
+      filter(category!="Above 2C") %>%
+      mutate(concern_governance=ifelse(gov<=input$gov&emissions_drop>input$emissions_drop, 3,
+                    ifelse(gov>input$gov&emissions_drop>input$emissions_drop, 2,1))) %>%
+      mutate(category=factor(category,levels=c("Below 1.5C", "1.5C low overshoot", "1.5C high overshoot","Lower 2C", "Higher 2C"))) 
+ 
+ 
+plot_governance<- df6 %>%
+                ggplot(aes(x=Year, y=concern_governance, color=category, fill=category, label=Scenario_ID))+
+  geom_jitter(width=2, size=0.6, alpha=0.6)+
+          stat_smooth(size=0.8, span=0.5, se=F)+
+  theme_ipsum()+ 
+   xlab("")+
+  ylab("Increasing Feasibility Concerns")+
+             scale_color_manual(values = colours)+
+                scale_fill_manual(values = colours)+
+     theme(axis.title.y = element_text(size=14), legend.text = element_text(size = 14), legend.position = c(0.8,0.8))+
+  ggtitle("Institutional Feasibility Concerns - SSP2 - Across Regions")+
+  ylim(1,3.5)+
+  facet_wrap(~Region)
+          
+          ggplotly(plot_governance, tooltip = c("Scenario_ID"))
+          
+    })
+    
+  
+```
+
+
+
+Aggregate evaluation
+=======================================================================
+
+
+
+Row {data-width=500}{.storyboard}
+-------------------------------------
+### __Explanation__
+* This application works best when using Chrome
+
+* Here we illustrate the results of the aggregation using the thresholds that were proposed in the paper
+
+* The purpose of this visualization is to show some trade-offs across the dimensions at the scenario unit of analysis
+
+* Values below 1 indicate missing values
+
+Row {data-width=500}{.storyboard}
+-------------------------------------
+
+```{r, echo=FALSE, message=FALSE}
+checkboxGroupInput("inCheckboxGroup", "Select climate category to display",
+     c("Below 1.5C", "1.5C low overshoot", "1.5C high overshoot","Lower 2C", "Higher 2C"))
+
+
+key_concerns<-aggregated %>%
+              filter(SSP_family==2) %>%
+              filter(category=="Below 1.5C"|category=="1.5C low overshoot"|category=="1.5C high overshoot") %>%
+              select(Scenario_ID, temperature_2100, concern_overall, concern_governance, concern_tech, concern_social, concern_economic) %>%
+              replace(is.na(.), 0.988) 
+
+key_concerns2 <- key_concerns %>% 
+                 remove_rownames %>% 
+                 column_to_rownames(var="Scenario_ID")
+
+sd <- SharedData$new(key_concerns2)
+
+pc<-parcoords(sd, brushMode="1d",
+                rownames = FALSE,
+                color = list(
+                colorBy = "temperature_2100",
+                colorScale = "scaleSequential"),
+                dimensions = list(
+                temperature_2100=list(
+                     title = 'Temperature in 2100', tickValues = unique(sd$temperature_2100))), 
+                withD3 = TRUE)
+ 
+
+modifyList(pc,list(height=400, width=1000))
+```          
+
+
+Row {data-width=500}{.storyboard}
+------------------------------------- 
+
+```{r, echo=FALSE, message=FALSE}
+  
+dt<-datatable(sd, rownames = TRUE,filter="top", options = list(pageLength = 15, scrollX=T))  
+modifyList(dt,list(height=300, width=1200))
+```
